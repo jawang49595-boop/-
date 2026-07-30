@@ -1,0 +1,148 @@
+-- Target Lock System
+-- Put this in StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local lockedTarget = nil
+local enabled = false
+
+-- UI
+local gui = Instance.new("ScreenGui")
+gui.Name = "TargetLockUI"
+gui.Parent = player.PlayerGui
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0,120,0,45)
+button.Position = UDim2.new(0.5,-60,0.85,0)
+button.BackgroundColor3 = Color3.fromRGB(90,0,200)
+button.TextColor3 = Color3.new(1,1,1)
+button.Text = "ล็อกเป้า: OFF"
+button.TextScaled = true
+button.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.Parent = button
+
+
+-- วงกลมกลางจอ
+local circle = Instance.new("Frame")
+circle.Size = UDim2.new(0,120,0,120)
+circle.Position = UDim2.new(0.5,-60,0.5,-60)
+circle.BackgroundTransparency = 1
+circle.Parent = gui
+
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(255,255,255)
+stroke.Parent = circle
+
+local circleCorner = Instance.new("UICorner")
+circleCorner.CornerRadius = UDim.new(1,0)
+circleCorner.Parent = circle
+
+
+-- หา Player ที่ใกล้วงกลม
+local function getTarget()
+
+	local closest = nil
+	local distance = math.huge
+
+	for _,v in pairs(Players:GetPlayers()) do
+
+		if v ~= player and v.Character then
+
+			local root = v.Character:FindFirstChild("HumanoidRootPart")
+
+			if root then
+
+				local pos,visible = camera:WorldToViewportPoint(root.Position)
+
+				if visible then
+
+					local center = Vector2.new(
+						camera.ViewportSize.X/2,
+						camera.ViewportSize.Y/2
+					)
+
+					local targetPos = Vector2.new(pos.X,pos.Y)
+
+					local dist = (center-targetPos).Magnitude
+
+					if dist < distance and dist < 120 then
+						distance = dist
+						closest = v
+					end
+
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+
+-- เปิดปิด
+button.MouseButton1Click:Connect(function()
+
+	enabled = not enabled
+
+	if enabled then
+		button.Text = "ล็อกเป้า: ON"
+		button.BackgroundColor3 = Color3.fromRGB(0,200,100)
+	else
+		button.Text = "ล็อกเป้า: OFF"
+		button.BackgroundColor3 = Color3.fromRGB(90,0,200)
+		lockedTarget = nil
+	end
+
+end)
+
+
+
+-- ล็อกกล้อง
+RunService.RenderStepped:Connect(function()
+
+	if enabled then
+
+		if lockedTarget == nil then
+			lockedTarget = getTarget()
+		end
+
+
+		if lockedTarget 
+		and lockedTarget.Character 
+		and lockedTarget.Character:FindFirstChild("Head") then
+
+			local head = lockedTarget.Character.Head
+
+			camera.CFrame = CFrame.new(
+				camera.CFrame.Position,
+				head.Position
+			)
+
+		else
+			lockedTarget = nil
+		end
+	end
+
+end)
+
+
+-- คลิกขวาเพื่อเลือกเป้าหมายใหม่
+UserInputService.InputBegan:Connect(function(input)
+
+	if input.KeyCode == Enum.KeyCode.E then
+
+		if enabled then
+			lockedTarget = getTarget()
+		end
+
+	end
+
+end)
